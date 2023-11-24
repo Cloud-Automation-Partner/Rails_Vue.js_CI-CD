@@ -1,0 +1,77 @@
+name: Build & Push Docker Images
+
+on:
+  workflow_run:
+    workflows: ["Ruby on Rails CI"]
+    types:
+      - completed
+    branches:
+      - master
+  workflow_dispatch:
+env:
+  RUBY_VERSION: 3.0
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    env:
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_HOST: ${{ vars.DB_HOST }}
+      SIDEKIQ_USERNAME: ${{ secrets.SIDEKIQ_USERNAME }}
+      SIDEKIQ_PASSWORD: ${{ secrets.SIDEKIQ_PASSWORD }}
+      SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASED }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_IP: ${{ secrets.SERVER_IP }}
+      FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+      GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+      GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Create .env File
+        run: |
+          echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" > .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_HOST=${{ vars.DB_HOST }}" >> .env
+          echo "SIDEKIQ_USERNAME=${{ secrets.SIDEKIQ_USERNAME }}" >> .env
+          echo "SIDEKIQ_PASSWORD=${{ secrets.SIDEKIQ_PASSWORD }}" >> .env
+          echo "SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}" >> .env
+          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env
+          echo "GMAIL_USERNAME=${{ secrets.GMAIL_USERNAME }}" >> .env
+          echo "GMAIL_PASSWORD=${{ secrets.GMAIL_PASSWORD }}" >> .env
+
+
+      - name: Build Docker Images
+        run: docker-compose -f docker-compose.production.yml build
+
+      - name: Tag Docker Images
+        run: |
+          docker tag timebot-be_web:latest docker_hub/timebot-be:web
+          docker tag timebot-be_sidekiq:latest docker_hub/timebot-be:sidekiq
+
+      - name: Push Docker Images to Docker Hub
+        run: |
+          echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+          docker push docker_hub/timebot-be:web
+          docker push docker_hub/timebot-be:sidekiq
+      
+      - name: Deploy to Server
+        run: |
+          mkdir -p /home/runner/.ssh
+          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > /home/runner/.ssh/id_ed25519
+          chmod 700 /home/runner/.ssh
+          chmod 600 /home/runner/.ssh/id_ed25519
+          SERVER_PATH=/root/
+          chmod +x ./.github/workflows/rails.sh
+          ssh -Tv -i /home/runner/.ssh/id_ed25519 -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP 'bash -s' < ./.github/workflows/rails.sh
+        shell: bash
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
