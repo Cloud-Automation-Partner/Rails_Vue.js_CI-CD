@@ -1,0 +1,51 @@
+name: Vue.js Image CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+    types:
+      - closed
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+
+    runs-on: ubuntu-latest
+
+    env:
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_IP: ${{ secrets.SERVER_IP }}
+      
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Build the Docker image
+        run: docker build . --file Dockerfile -t timebot-fe:latest
+
+      - name: Tag Docker Image
+        run: |
+          docker tag timebot-fe:latest docker_hub/timebot-be:frontend
+      - name: Push Docker Image to Docker Hub
+        run: |
+          echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+          docker push docker_hub/timebot-be:frontend
+
+      - name: Deploy to Server
+        run: |
+          mkdir -p /home/runner/.ssh
+          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > /home/runner/.ssh/id_ed25519
+          chmod 700 /home/runner/.ssh
+          chmod 600 /home/runner/.ssh/id_ed25519
+          SERVER_PATH=/root/
+          ssh -Tv -i /home/runner/.ssh/id_ed25519 -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP "cd $SERVER_PATH && docker-compose -f docker-compose.server.yml pull && docker-compose -f docker-compose.server.yml up -d"
+        shell: bash
+        env: # ensure these are set in your secrets or environment variables
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
