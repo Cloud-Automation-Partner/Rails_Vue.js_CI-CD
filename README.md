@@ -166,14 +166,14 @@ jobs:
 
       - name: Tag Docker Images
         run: |
-          docker tag timebot-be_web:latest zahidmahmood1995/timebot-be:web
-          docker tag timebot-be_sidekiq:latest zahidmahmood1995/timebot-be:sidekiq
+          docker tag timebot-be_web:latest docker_hub/timebot-be:web
+          docker tag timebot-be_sidekiq:latest docker_hub/timebot-be:sidekiq
 
       - name: Push Docker Images to Docker Hub
         run: |
           echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
-          docker push zahidmahmood1995/timebot-be:web
-          docker push zahidmahmood1995/timebot-be:sidekiq
+          docker push docker_hub/timebot-be:web
+          docker push docker_hub/timebot-be:sidekiq
       
       - name: Deploy to Server
         run: |
@@ -271,11 +271,11 @@ jobs:
 
       - name: Tag Docker Image
         run: |
-          docker tag timebot-fe:latest zahidmahmood1995/timebot-be:frontend
+          docker tag timebot-fe:latest docker_hub/timebot-be:frontend
       - name: Push Docker Image to Docker Hub
         run: |
           echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
-          docker push zahidmahmood1995/timebot-be:frontend
+          docker push docker_hub/timebot-be:frontend
 
       - name: Deploy to Server
         run: |
