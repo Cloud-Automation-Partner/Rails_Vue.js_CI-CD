@@ -303,5 +303,6 @@ jobs:
 ### 3. Testing CI/CD  
 
 - After pushing changes, check the "Actions" tab in your GitHub repositories.  
-- Monitor workflows for successful execution or any errors. 
-- This Document provides a clear, professional, and easy-to-follow guide for setting up CI/CD for a Rails and Vue.js project using GitHub Actions and deploying to AWS EC2.
+- Monitor workflows for successful execution or any errors.
+  
+This Document provides a clear, professional, and easy-to-follow guide for setting up CI/CD for a Rails and Vue.js project using GitHub Actions and deploying to AWS EC2.
